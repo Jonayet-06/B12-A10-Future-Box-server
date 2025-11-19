@@ -76,12 +76,52 @@ async function run() {
       res.send(result);
     });
 
-    // handle delete
+    // delete data
     app.delete("/habits/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await habitsCollection.deleteOne(query);
       res.send(result);
+    });
+
+    // mark complete with duplicate check
+    app.post("/habits/:id/complete", async (req, res) => {
+      const habitId = req.params.id;
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      try {
+        const result = await habitsCollection.updateOne(
+          {
+            _id: new ObjectId(habitId),
+            completionHistory: {
+              $not: { $elemMatch: { date: today.toISOString() } },
+            },
+          },
+          {
+            $push: { completionHistory: { date: today.toISOString() } },
+          }
+        );
+
+        const updatedHabit = await habitsCollection.findOne({
+          _id: new ObjectId(habitId),
+        });
+
+        if (result.modifiedCount === 0) {
+          return res.json({
+            message: "Already completed today",
+            habit: updatedHabit,
+          });
+        }
+
+        res.json({
+          message: "Completed for today",
+          habit: updatedHabit,
+        });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
     });
 
     await client.db("admin").command({ ping: 1 });
