@@ -4,9 +4,35 @@ require("dotenv").config();
 const app = express();
 const port = process.env.PORT || 3000;
 
+const admin = require("firebase-admin");
+
+const serviceAccount = require("./future-box-client-firebase-admin-key.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
 // middleware
 app.use(cors());
 app.use(express.json());
+
+const verifyFirebaseToken = async (req, res, next) => {
+  console.log("In the verify middleware", req.headers.authorization);
+  if (!req.headers.authorization) {
+    return res.status(401).send({ message: "Unauthorized access" });
+  }
+  const token = req.headers.authorization.split(" ")[1];
+  if (!token) {
+    return res.status(401).send({ message: "Unauthorized Access" });
+  }
+
+  try {
+    await admin.auth().verifyIdToken(token);
+    next();
+  } catch {
+    return res.status(401).send({ message: "Unauthorized access" });
+  }
+};
 
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.u65jfbo.mongodb.net/?appName=Cluster0`;
@@ -44,7 +70,8 @@ async function run() {
     });
 
     // my habits data
-    app.get("/myhabits", async (req, res) => {
+    app.get("/myhabits", verifyFirebaseToken, async (req, res) => {
+      // console.log("headers", req.headers);
       const email = req.query.email;
       const query = {};
       if (email) {
