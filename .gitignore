@@ -1,3 +1,4 @@
 node_modules
 .env
 future-box-client-firebase-admin-key.json
+.vercel

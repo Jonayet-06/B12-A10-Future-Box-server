@@ -6,7 +6,12 @@ const port = process.env.PORT || 3000;
 
 const admin = require("firebase-admin");
 
-const serviceAccount = require("./future-box-client-firebase-admin-key.json");
+// index.js
+const decoded = Buffer.from(
+  process.env.FIREBASE_SERVICE_KEY,
+  "base64"
+).toString("utf8");
+const serviceAccount = JSON.parse(decoded);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -17,7 +22,7 @@ app.use(cors());
 app.use(express.json());
 
 const verifyFirebaseToken = async (req, res, next) => {
-  console.log("In the verify middleware", req.headers.authorization);
+  // console.log("In the verify middleware", req.headers.authorization);
   if (!req.headers.authorization) {
     return res.status(401).send({ message: "Unauthorized access" });
   }
@@ -45,13 +50,8 @@ const client = new MongoClient(uri, {
   },
 });
 
-app.get("/", (req, res) => {
-  res.send("Habit server is running");
-});
-
 async function run() {
   try {
-    await client.connect();
     const db = client.db("habit-db");
     const habitsCollection = db.collection("habits");
 
@@ -151,7 +151,7 @@ async function run() {
       }
     });
 
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
@@ -159,6 +159,10 @@ async function run() {
   }
 }
 run().catch(console.dir);
+
+app.get("/", (req, res) => {
+  res.send("Habit server is running");
+});
 
 app.listen(port, () => {
   console.log(`Habit server is running on port: ${port}`);
